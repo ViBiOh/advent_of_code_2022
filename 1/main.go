@@ -11,17 +11,7 @@ import (
 const topCount = 3
 
 func main() {
-	file, err := os.OpenFile("./input.txt", os.O_RDONLY, 0o600)
-	if err != nil {
-		panic(fmt.Errorf("open: %w", err))
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			panic(fmt.Errorf("close: %w", err))
-		}
-	}()
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(os.Stdin)
 
 	var topRank []int64
 	var current int64
@@ -32,16 +22,10 @@ func main() {
 		if len(line) == 0 {
 			topRank = appendRank(topRank, current)
 			current = 0
-
-			continue
+		} else {
+			value, _ := strconv.ParseInt(line, 10, 64)
+			current += value
 		}
-
-		value, err := strconv.ParseInt(line, 10, 64)
-		if err != nil {
-			panic(fmt.Errorf("parse: %w", err))
-		}
-
-		current += value
 	}
 
 	current = 0

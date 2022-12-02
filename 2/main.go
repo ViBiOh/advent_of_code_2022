@@ -20,28 +20,13 @@ var secondRound [][]int = [][]int{
 }
 
 func main() {
-	file, err := os.OpenFile("./input.txt", os.O_RDONLY, 0o600)
-	if err != nil {
-		panic(fmt.Errorf("open: %w", err))
-	}
-	defer func() {
-		if err := file.Close(); err != nil {
-			panic(fmt.Errorf("close: %w", err))
-		}
-	}()
-
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(os.Stdin)
 
 	var score int
 	var expectation int
 
 	for scanner.Scan() {
-		line := scanner.Text()
-
-		parts := strings.Split(line, " ")
-		if len(parts) != 2 {
-			panic(fmt.Errorf("invalid input `%s`", line))
-		}
+		parts := strings.Split(scanner.Text(), " ")
 
 		meIndex := int(parts[1][0]) - int('X')
 		opponentIndex := int(parts[0][0]) - int('A')
