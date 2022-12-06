@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+set -o nounset -o pipefail -o errexit
+
+if [[ ${TRACE:-0} == "1" ]]; then
+  set -o xtrace
+fi
+
+script_dir() {
+  local FILE_SOURCE="${BASH_SOURCE[0]}"
+
+  if [[ -L ${FILE_SOURCE} ]]; then
+    dirname "$(readlink "${FILE_SOURCE}")"
+  else
+    (
+      cd "$(dirname "${FILE_SOURCE}")" && pwd
+    )
+  fi
+}
+
+main() {
+  if [[ ${#} -ne 1 ]]; then
+    printf "%bUsage: %s DAY_NUMBER%b\n" "${RED:-}" "${0}" "${RESET:-}"
+    return 1
+  fi
+
+  local SCRIPT_DIR
+  SCRIPT_DIR="$(script_dir)"
+
+  local DAY_DIRECTORY
+  DAY_DIRECTORY="${SCRIPT_DIR}/${1}"
+
+  mkdir "${DAY_DIRECTORY}"
+  cp "${SCRIPT_DIR}/main.go" "${DAY_DIRECTORY}/main.go"
+}
+
+main "${@}"
