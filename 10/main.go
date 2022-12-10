@@ -10,59 +10,73 @@ import (
 
 const crtWidth = 40
 
+type cpu struct {
+	cycle     int64
+	register  int64
+	listeners []func(int64, int64)
+}
+
+func newCpu(listeners []func(int64, int64)) *cpu {
+	return &cpu{
+		register:  1,
+		listeners: listeners,
+	}
+}
+
+func (c *cpu) do(cycleCount int, value int64) {
+	for i := 0; i < cycleCount; i++ {
+		c.increment()
+	}
+
+	c.register += value
+}
+
+func (c *cpu) increment() {
+	c.cycle += 1
+
+	for _, listener := range c.listeners {
+		listener(c.cycle, c.register)
+	}
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	var sum int64
 	var nextComputeCycle int64 = 20
 
-	fmt.Print("#")
+	cpu := newCpu([]func(int64, int64){
+		func(cycle, register int64) {
+			if nextComputeCycle == cycle {
+				sum = sum + cycle*register
+				nextComputeCycle += 40
+			}
+		},
+		func(cycle, register int64) {
+			if abs((cycle-1)%crtWidth-register) <= 1 {
+				fmt.Print("#")
+			} else {
+				fmt.Print(".")
+			}
 
-	var x int64 = 1
-	var cycle int64 = 1
+			if cycle%crtWidth == 0 {
+				fmt.Print("\n")
+			}
+		},
+	})
 
 	for scanner.Scan() {
 		switch parts := strings.Split(scanner.Text(), " "); parts[0] {
 		case "addx":
-			cycle, sum, nextComputeCycle = incrementCycle(cycle, nextComputeCycle, sum, x)
-			handleCrt(cycle, x)
-
 			value, _ := strconv.ParseInt(parts[1], 10, 64)
-			x += value
-
-			cycle, sum, nextComputeCycle = incrementCycle(cycle, nextComputeCycle, sum, x)
-			handleCrt(cycle, x)
+			cpu.do(2, value)
 
 		case "noop":
-			cycle, sum, nextComputeCycle = incrementCycle(cycle, nextComputeCycle, sum, x)
-			handleCrt(cycle, x)
+			cpu.do(1, 0)
 		}
 	}
 
 	fmt.Println("sum", sum)
-}
-
-func incrementCycle(cycle, nextComputeCycle, sum, x int64) (int64, int64, int64) {
-	cycle++
-
-	if nextComputeCycle == cycle {
-		sum = sum + cycle*x
-		nextComputeCycle += 40
-	}
-
-	return cycle, sum, nextComputeCycle
-}
-
-func handleCrt(cycle, x int64) {
-	if abs((cycle-1)%crtWidth-x) <= 1 {
-		fmt.Print("#")
-	} else {
-		fmt.Print(".")
-	}
-
-	if cycle%crtWidth == 0 {
-		fmt.Print("\n")
-	}
 }
 
 func abs(a int64) int64 {
