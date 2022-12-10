@@ -25,18 +25,14 @@ func newCpu(listeners []func(*cpu)) *cpu {
 
 func (c *cpu) do(cycleCount int, value int64) {
 	for i := 0; i < cycleCount; i++ {
-		c.increment()
+		c.cycle += 1
+
+		for _, listener := range c.listeners {
+			listener(c)
+		}
 	}
 
 	c.register += value
-}
-
-func (c *cpu) increment() {
-	c.cycle += 1
-
-	for _, listener := range c.listeners {
-		listener(c)
-	}
 }
 
 func main() {
