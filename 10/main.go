@@ -13,10 +13,10 @@ const crtWidth = 40
 type cpu struct {
 	cycle     int64
 	register  int64
-	listeners []func(int64, int64)
+	listeners []func(*cpu)
 }
 
-func newCpu(listeners []func(int64, int64)) *cpu {
+func newCpu(listeners []func(*cpu)) *cpu {
 	return &cpu{
 		register:  1,
 		listeners: listeners,
@@ -35,7 +35,7 @@ func (c *cpu) increment() {
 	c.cycle += 1
 
 	for _, listener := range c.listeners {
-		listener(c.cycle, c.register)
+		listener(c)
 	}
 }
 
@@ -45,21 +45,21 @@ func main() {
 	var sum int64
 	var nextComputeCycle int64 = 20
 
-	cpu := newCpu([]func(int64, int64){
-		func(cycle, register int64) {
-			if nextComputeCycle == cycle {
-				sum = sum + cycle*register
+	cpu := newCpu([]func(*cpu){
+		func(current *cpu) {
+			if nextComputeCycle == current.cycle {
+				sum = sum + current.cycle*current.register
 				nextComputeCycle += 40
 			}
 		},
-		func(cycle, register int64) {
-			if abs((cycle-1)%crtWidth-register) <= 1 {
+		func(current *cpu) {
+			if abs((current.cycle-1)%crtWidth-current.register) <= 1 {
 				fmt.Print("#")
 			} else {
 				fmt.Print(".")
 			}
 
-			if cycle%crtWidth == 0 {
+			if current.cycle%crtWidth == 0 {
 				fmt.Print("\n")
 			}
 		},
