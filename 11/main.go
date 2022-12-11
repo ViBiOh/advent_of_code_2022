@@ -17,8 +17,8 @@ const (
 	truePrefix      = "If true: throw to monkey "
 	falsePrefix     = "If false: throw to monkey "
 
-	roundCount = 20
-	worryLevel = 3
+	roundCount = 10000
+	worryLevel = 1
 )
 
 type operation func(uint64) uint64
@@ -77,10 +77,12 @@ func (m *monkey) addItem(item uint64) {
 	m.items = append(m.items, item)
 }
 
-func (m *monkey) makeTurn(others []*monkey) {
+func (m *monkey) makeTurn(others []*monkey, prime uint64) {
 	for _, item := range m.items {
 		item = m.operation(item) / worryLevel
 		m.totalInspected++
+
+		item = item % prime
 
 		if item%m.divisibleBy == 0 {
 			others[m.monkeyWhenDivisible].addItem(item)
@@ -94,9 +96,10 @@ func (m *monkey) makeTurn(others []*monkey) {
 
 func main() {
 	monkeys := parseMonkeys()
+	prime := computePrime(monkeys)
 
 	for i := 0; i < roundCount; i++ {
-		makeRound(monkeys)
+		makeRound(monkeys, prime)
 	}
 
 	sort.Sort(sort.Reverse(MonkeyByInspected(monkeys)))
@@ -104,18 +107,20 @@ func main() {
 	fmt.Println("total", monkeys[0].totalInspected*monkeys[1].totalInspected)
 }
 
-type MonkeyByInspected []*monkey
-
-func (a MonkeyByInspected) Len() int      { return len(a) }
-func (a MonkeyByInspected) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
-func (a MonkeyByInspected) Less(i, j int) bool {
-	return a[i].totalInspected < a[j].totalInspected
+func makeRound(monkeys []*monkey, prime uint64) {
+	for i := 0; i < len(monkeys); i++ {
+		monkeys[i].makeTurn(monkeys, prime)
+	}
 }
 
-func makeRound(monkeys []*monkey) {
-	for i := 0; i < len(monkeys); i++ {
-		monkeys[i].makeTurn(monkeys)
+func computePrime(monkeys []*monkey) uint64 {
+	var prime uint64 = 1
+
+	for _, monkey := range monkeys {
+		prime *= monkey.divisibleBy
 	}
+
+	return prime
 }
 
 func parseMonkeys() []*monkey {
@@ -135,8 +140,8 @@ func parseMonkeys() []*monkey {
 
 		case strings.HasPrefix(line, itemsPrefix):
 			for _, part := range strings.Split(strings.TrimPrefix(line, itemsPrefix), ", ") {
-				item, _ := strconv.ParseUint(part, 10, 64)
-				monkeys[len(monkeys)-1].addItem(item)
+				value, _ := strconv.ParseUint(part, 10, 64)
+				monkeys[len(monkeys)-1].addItem(value)
 			}
 
 		case strings.HasPrefix(line, operationPrefix):
@@ -156,4 +161,12 @@ func parseMonkeys() []*monkey {
 	}
 
 	return monkeys
+}
+
+type MonkeyByInspected []*monkey
+
+func (a MonkeyByInspected) Len() int      { return len(a) }
+func (a MonkeyByInspected) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a MonkeyByInspected) Less(i, j int) bool {
+	return a[i].totalInspected < a[j].totalInspected
 }
