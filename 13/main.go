@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"sort"
 )
 
 func main() {
@@ -17,10 +16,8 @@ func main() {
 	firstDivider := []any{[]any{float64(2)}}
 	secondDivider := []any{[]any{float64(6)}}
 
-	packets := []any{
-		firstDivider,
-		secondDivider,
-	}
+	firstIndex := 1
+	secondIndex := 2
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -40,8 +37,11 @@ func main() {
 				sum += index
 			}
 
-			packets = storePacket(packets, left)
-			packets = storePacket(packets, right)
+			firstIndex = updateIndex(firstIndex, left, firstDivider)
+			firstIndex = updateIndex(firstIndex, right, firstDivider)
+
+			secondIndex = updateIndex(secondIndex, left, secondDivider)
+			secondIndex = updateIndex(secondIndex, right, secondDivider)
 
 			right = nil
 			left = nil
@@ -50,26 +50,15 @@ func main() {
 
 	fmt.Println("sum", sum)
 
-	firstIndex := sort.Search(len(packets), func(i int) bool {
-		return compare(packets[i], firstDivider) > 0
-	})
-	secondIndex := sort.Search(len(packets), func(i int) bool {
-		return compare(packets[i], secondDivider) > 0
-	})
-
 	fmt.Println("divider", firstIndex*secondIndex)
 }
 
-func storePacket(packets []any, item any) []any {
-	index := sort.Search(len(packets), func(i int) bool {
-		return compare(packets[i], item) > 0
-	})
+func updateIndex(index int, toCompare, divider []any) int {
+	if compare(toCompare, divider) <= 0 {
+		return index + 1
+	}
 
-	packets = append(packets, item)
-	copy(packets[index+1:], packets[index:])
-	packets[index] = item
-
-	return packets
+	return index
 }
 
 func compare(left, right any) int {
