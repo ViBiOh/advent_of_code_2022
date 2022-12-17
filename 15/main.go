@@ -20,15 +20,27 @@ type position struct {
 	x, y int64
 }
 
-type Range struct {
-	start, end int64
-}
-
 func (p position) manhattan(other position) int64 {
 	return abs(p.x-other.x) + abs(p.y-other.y)
 }
 
+type Range struct {
+	start, end int64
+}
+
 type Ranges []Range
+
+func (r Ranges) Insert(value Range) []Range {
+	index := sort.Search(len(r), func(i int) bool {
+		return r[i].start > value.start
+	})
+
+	r = append(r, value)
+	copy(r[index+1:], r[index:])
+	r[index] = value
+
+	return r
+}
 
 func (r Ranges) Sum() int64 {
 	if len(r) == 0 {
@@ -75,49 +87,35 @@ func (r Ranges) Gap(lower, upper int64) int64 {
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 
-	var scanned Ranges
-	search := make([]Ranges, yPart2)
+	lines := make([]Ranges, yPart2)
 
 	for scanner.Scan() {
 		sensor, beacon := scanInput(scanner)
-		scanned = determineScanned(scanned, sensor, beacon, yPart1)
 
 		for i := int64(0); i < yPart2; i++ {
-			search[i] = determineScanned(search[i], sensor, beacon, i)
+			lines[i] = computeRange(lines[i], sensor, beacon, i)
 		}
 	}
 
-	fmt.Println("not a beacon at", yPart1, ":", scanned.Sum())
+	fmt.Println("not a beacon at", yPart1, ":", lines[yPart1].Sum())
 
 	for i := int64(0); i < yPart2; i++ {
-		if gap := search[i].Gap(0, yPart2); gap != -1 {
+		if gap := lines[i].Gap(0, yPart2); gap != -1 {
 			fmt.Println("lost beacon is at x=", gap, "y=", i, ", frequency is", gap*int64(xMultiplier)+i)
-			return
+			break
 		}
 	}
 }
 
-func determineScanned(scanned []Range, sensor, beacon position, targetY int64) []Range {
+func computeRange(ranges Ranges, sensor, beacon position, targetY int64) []Range {
 	distance := sensor.manhattan(beacon)
 
 	if yDelta := abs(targetY - sensor.y); yDelta <= distance {
 		xRange := distance - yDelta
-		scanned = dichotomicInsert(scanned, Range{start: sensor.x - xRange, end: sensor.x + xRange})
+		ranges = ranges.Insert(Range{start: sensor.x - xRange, end: sensor.x + xRange})
 	}
 
-	return scanned
-}
-
-func dichotomicInsert(data []Range, value Range) []Range {
-	index := sort.Search(len(data), func(i int) bool {
-		return data[i].start > value.start
-	})
-
-	data = append(data, value)
-	copy(data[index+1:], data[index:])
-	data[index] = value
-
-	return data
+	return ranges
 }
 
 func abs(value int64) int64 {
