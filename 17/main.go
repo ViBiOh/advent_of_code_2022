@@ -12,8 +12,9 @@ const (
 )
 
 var (
-	cycle = uint64(2022)
-	rocks = [][]int8{
+	cycle        = uint64(1000000000000)
+	patternCycle = uint64(50000)
+	rocks        = [][]int8{
 		{1<<3 | 1<<2 | 1<<1 | 1<<0},
 		{1 << 1, 1<<2 | 1<<1 | 1<<0, 1 << 1},
 		{1 << 0, 1 << 0, 1<<2 | 1<<1 | 1<<0},
@@ -23,100 +24,109 @@ var (
 )
 var rocksLen = len(rocks)
 
+type occurence struct {
+	i      uint64
+	height uint64
+}
+
 func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 
 	jet := scanner.Text()
-	jetLen := len(jet)
-	var jetIndex int
 
-	var currentRock []int8
-	var currentIndex int
+	var jetIndex int
+	var rockIndex int
 
 	var lines []int8
 
-	var x, y int
+	var patternKey string
+	pattern := make(map[string][]occurence)
 
-	for i := uint64(0); i < cycle; i++ {
-		currentRock = rocks[currentIndex]
+	for i := uint64(0); i < patternCycle; i++ {
+		lines, jetIndex = fallRock(lines, jet, jetIndex, rockIndex)
 
-		x = 0
+		rockIndex++
+		rockIndex %= rocksLen
 
-	xPosition:
-		for _, line := range currentRock {
-			if leftGap&(line<<x) != 0 {
-				goto lines
-			}
+		highest := highestRock(lines)
+		patternKey = fmt.Sprintf("%d_%d_%d", jetIndex, rockIndex, lines[highest])
+		if value, ok := pattern[patternKey]; ok {
+			pattern[patternKey] = append(value, occurence{i: i, height: uint64(highest)})
+		} else {
+			pattern[patternKey] = []occurence{{i: i, height: uint64(highest)}}
 		}
-		x += 1
-		goto xPosition
-
-	lines:
-		y = highestRock(lines) + bottomGap + 1
-
-		for i := len(lines) - len(currentRock); i < y; i++ {
-			lines = append(lines, 0)
-		}
-
-	jet:
-		switch jet[jetIndex] {
-		case '<':
-			if canMove(lines, currentRock, x+1, y) {
-				x += 1
-			}
-		case '>':
-			if canMove(lines, currentRock, x-1, y) {
-				x -= 1
-			}
-		}
-
-		jetIndex += 1
-		jetIndex %= jetLen
-
-		if canMove(lines, currentRock, x, y-1) {
-			y -= 1
-
-			goto jet
-		}
-
-		convertRock(lines, currentRock, x, y)
-		// if pattern := hasPattern(lines); pattern != -1 {
-		// 	fmt.Printf("pattern detected, patternSize=%d, i=%d, high=%d\n", pattern, i, highestRock(lines))
-		// 	break
-		// }
-
-		currentIndex++
-		currentIndex %= rocksLen
 	}
 
-	fmt.Println("total", highestRock(lines)+1)
+	initialHeight := uint64(highestRock(lines))
+
+	var projectedHeight uint64
+	var restart int
+
+	usedPattern := pattern[patternKey]
+	gap := usedPattern[len(usedPattern)-1].height - usedPattern[len(usedPattern)-2].height
+	size := usedPattern[len(usedPattern)-1].i - usedPattern[len(usedPattern)-2].i
+
+	restart = int((cycle - usedPattern[0].i) % size)
+	projectedHeight = usedPattern[0].height + (cycle-usedPattern[0].i)/size*gap
+
+	for i := 0; i < restart; i++ {
+		lines, jetIndex = fallRock(lines, jet, jetIndex, rockIndex)
+
+		rockIndex++
+		rockIndex %= rocksLen
+	}
+
+	projectedHeight += uint64(highestRock(lines)) - initialHeight
+
+	fmt.Println("total", projectedHeight)
 }
 
-func hasPattern(lines []int8) int {
-	firstLine := lines[0]
+func fallRock(lines []int8, jet string, jetIndex, rockIndex int) ([]int8, int) {
+	currentRock := rocks[rockIndex]
 
-	for i := 1; i < len(lines); i++ {
-		if firstLine != lines[i] || i*2 > len(lines) {
-			continue
+	x := 0
+
+xPosition:
+	for _, line := range currentRock {
+		if leftGap&(line<<x) != 0 {
+			goto lines
 		}
+	}
+	x += 1
+	goto xPosition
 
-		var diff bool
+lines:
+	y := highestRock(lines) + bottomGap + 1
 
-		for j := 1; j < i; j++ {
-			if lines[j] != lines[j+i] {
-				continue
-			}
+	for i := len(lines) - len(currentRock); i < y; i++ {
+		lines = append(lines, 0)
+	}
 
-			diff = true
+jet:
+	switch jet[jetIndex] {
+	case '<':
+		if canMove(lines, currentRock, x+1, y) {
+			x += 1
 		}
-
-		if !diff {
-			return i - 1
+	case '>':
+		if canMove(lines, currentRock, x-1, y) {
+			x -= 1
 		}
 	}
 
-	return -1
+	jetIndex += 1
+	jetIndex %= len(jet)
+
+	if canMove(lines, currentRock, x, y-1) {
+		y -= 1
+
+		goto jet
+	}
+
+	convertRock(lines, currentRock, x, y)
+
+	return lines, jetIndex
 }
 
 func canMove(lines []int8, rock []int8, x, y int) bool {
@@ -145,22 +155,6 @@ func convertRock(lines []int8, rock []int8, x, y int) {
 
 	for i := len(rock) - 1; i >= 0; i-- {
 		lines[offset-i] |= rock[i] << x
-	}
-}
-
-func render(lines []int8) {
-	fmt.Println("\nRendering")
-
-	for i := len(lines) - 1; i >= 0; i-- {
-		for x := 6; x >= 0; x-- {
-			if lines[i]&(1<<x) != 0 {
-				fmt.Print("#")
-			} else {
-				fmt.Print(".")
-			}
-		}
-
-		fmt.Print("\n")
 	}
 }
 
